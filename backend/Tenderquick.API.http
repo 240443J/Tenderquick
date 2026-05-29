@@ -1,0 +1,6 @@
+@Tenderquick.API_HostAddress = http://localhost:5228
+
+GET {{Tenderquick.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
