@@ -1,5 +1,5 @@
-import axios from './axios'
+// PROTOTYPE: backed by the in-memory mock DB.
+import { db } from '../mock/db'
+import { respond } from '../mock/respond'
 
-const BASE = '/api/audit'
-
-export const getRecent = (limit = 50) => axios.get(`${BASE}/recent`, { params: { limit } })
+export const getRecent = (limit = 50) => respond(db.audit.slice(0, limit))

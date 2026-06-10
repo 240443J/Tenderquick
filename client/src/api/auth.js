@@ -1,8 +1,8 @@
-import axios from './axios'
+// PROTOTYPE: offline mock auth. Always resolves the seeded admin user.
+import { db } from '../mock/db'
+import { respond } from '../mock/respond'
 
-const BASE = '/api/auth'
-
-export const login = (data) => axios.post(`${BASE}/login`, data)
-export const me = () => axios.get(`${BASE}/me`)
-export const listUsers = () => axios.get(`${BASE}/users`)
-export const createUser = (data) => axios.post(`${BASE}/users`, data)
+export const login = () => respond({ token: 'mock-token', user: db.user })
+export const me = () => respond(db.user)
+export const listUsers = () => respond([db.user])
+export const createUser = (data) => respond({ id: 2, ...data })
