@@ -31,20 +31,20 @@ namespace TenderquickServer.Services
             }
 
             return await query
-                .OrderByDescending(t => t.CreatedAt)
+                .OrderByDescending(t => t.Id)
                 .Select(t => new TenderListItem(
-                    t.Id, t.Reference, t.Title, t.Agency, t.Status, t.EstValue, t.ClosingAt))
+                    t.Id, t.Reference, t.Title, t.Agency, t.Source, t.Status, t.EstValue, t.ClosingAt))
                 .ToListAsync();
         }
 
         public async Task<Tender?> GetByIdAsync(int id)
             => await _db.Tenders.FirstOrDefaultAsync(t => t.Id == id);
 
-        public async Task<Tender> CreateAsync(CreateTenderRequest req)
+        public async Task<CreateTenderResult> CreateAsync(CreateTenderRequest req)
         {
             var reference = req.Reference.Trim();
             if (await _db.Tenders.AnyAsync(t => t.Reference == reference))
-                throw new DuplicateReferenceException(reference);
+                return new CreateTenderResult(CreateOutcome.DuplicateReference, null);
 
             var now = DateTime.UtcNow;
             var tender = new Tender
@@ -52,8 +52,8 @@ namespace TenderquickServer.Services
                 Reference = reference,
                 Title = req.Title.Trim(),
                 Agency = req.Agency.Trim(),
-                Source = TenderSource.Manual,
-                Status = TenderStatus.Interested,
+                Source = req.Source ?? "Manual",
+                Status = "Interested",
                 EstValue = req.EstValue,
                 ClosingAt = req.ClosingAt,
                 Notes = req.Notes?.Trim(),
@@ -64,13 +64,13 @@ namespace TenderquickServer.Services
             _db.Tenders.Add(tender);
             await _db.SaveChangesAsync();
             await _audit.LogAsync("Tender.Created", "Tender", tender.Id, new { tender.Reference });
-            return tender;
+            return new CreateTenderResult(CreateOutcome.Created, tender);
         }
 
-        public async Task<Tender?> UpdateAsync(int id, UpdateTenderRequest req)
+        public async Task<UpdateTenderResult> UpdateAsync(int id, UpdateTenderRequest req)
         {
             var tender = await _db.Tenders.FirstOrDefaultAsync(t => t.Id == id);
-            if (tender is null) return null;
+            if (tender is null) return new UpdateTenderResult(UpdateOutcome.NotFound, null);
 
             tender.Title = req.Title.Trim();
             tender.Agency = req.Agency.Trim();
@@ -82,7 +82,7 @@ namespace TenderquickServer.Services
 
             await _db.SaveChangesAsync();
             await _audit.LogAsync("Tender.Updated", "Tender", tender.Id, new { tender.Status });
-            return tender;
+            return new UpdateTenderResult(UpdateOutcome.Updated, tender);
         }
 
         public async Task<bool> DeleteAsync(int id)

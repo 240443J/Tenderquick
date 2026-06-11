@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TenderquickServer.Models;
+using TenderquickServer.Models.Tenders;
 
 namespace TenderquickServer.Data
 {
@@ -56,7 +57,7 @@ namespace TenderquickServer.Data
                 Reference = reference,
                 Title = title,
                 Agency = agency,
-                Source = TenderSource.Manual,
+                Source = "Manual",
                 Status = status,
                 EstValue = estValue,
                 ClosingAt = closingAt,

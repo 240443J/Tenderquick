@@ -56,8 +56,8 @@ builder.Services.AddScoped<ITenderSearchService, TenderSearchService>();
 
 // External tender sources — registered as IEnumerable<ITenderSource> for fan-out search.
 builder.Services.AddHttpClient<ITenderSource, GebizSource>();
-builder.Services.AddScoped<ITenderSource, SesamiSource>();
-builder.Services.AddScoped<ITenderSource, TenderboardSource>();
+builder.Services.AddHttpClient<ITenderSource, SesamiSource>();
+builder.Services.AddHttpClient<ITenderSource, TenderboardSource>();
 
 // ─── Controllers + Swagger ──────────────────────────────────
 builder.Services.AddControllers();
