@@ -1,39 +1,22 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import * as authApi from '../api/auth'
+import { createContext, useContext, useState } from 'react'
+import { db } from '../mock/db'
 
 const AuthContext = createContext(null)
 
+// PROTOTYPE: offline auth. Starts signed in as the seeded admin so the demo
+// opens straight into the workspace. Real JWT login wires back in here later.
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(db.user)
 
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      setLoading(false)
-      return
-    }
-    authApi
-      .me()
-      .then((res) => setUser(res.data))
-      .catch(() => localStorage.removeItem('token'))
-      .finally(() => setLoading(false))
-  }, [])
-
-  const login = async (credentials) => {
-    const res = await authApi.login(credentials)
-    localStorage.setItem('token', res.data.token)
-    setUser(res.data.user)
-    return res.data
+  const login = async () => {
+    setUser(db.user)
+    return { user: db.user }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    setUser(null)
-  }
+  const logout = () => setUser(null)
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading: false, login, logout }}>
       {children}
     </AuthContext.Provider>
   )
