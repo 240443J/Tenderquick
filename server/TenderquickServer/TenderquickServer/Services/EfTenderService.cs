@@ -18,7 +18,7 @@ namespace TenderquickServer.Services
 
         public async Task<IEnumerable<TenderListItem>> GetAllAsync(string? status, string? search)
         {
-            IQueryable<Tender> query = _db.Tenders;
+            IQueryable<Tender> query = _db.Tenders.AsNoTracking();
 
             if (!string.IsNullOrWhiteSpace(status))
                 query = query.Where(t => t.Status == status);
@@ -37,12 +37,19 @@ namespace TenderquickServer.Services
                 .ToListAsync();
         }
 
-        public async Task<Tender?> GetByIdAsync(int id)
-            => await _db.Tenders.FirstOrDefaultAsync(t => t.Id == id);
+        public async Task<TenderDetail?> GetByIdAsync(int id)
+        {
+            var tender = await _db.Tenders
+                .AsNoTracking()
+                .Include(t => t.Specs)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            return tender is null ? null : ToDetail(tender);
+        }
 
         public async Task<CreateTenderResult> CreateAsync(CreateTenderRequest req)
         {
-            var reference = req.Reference.Trim();
+            var reference = (req.Reference ?? string.Empty).Trim();
             if (await _db.Tenders.AnyAsync(t => t.Reference == reference))
                 return new CreateTenderResult(CreateOutcome.DuplicateReference, null);
 
@@ -50,50 +57,94 @@ namespace TenderquickServer.Services
             var tender = new Tender
             {
                 Reference = reference,
-                Title = req.Title.Trim(),
-                Agency = req.Agency.Trim(),
-                Source = req.Source ?? "Manual",
-                Status = "Interested",
+                Title = (req.Title ?? string.Empty).Trim(),
+                Agency = (req.Agency ?? string.Empty).Trim(),
+                Source = string.IsNullOrWhiteSpace(req.Source) ? "Manual" : req.Source.Trim(),
+                Status = TenderStatus.Interested,
                 EstValue = req.EstValue,
                 ClosingAt = req.ClosingAt,
                 Notes = req.Notes?.Trim(),
                 CreatedAt = now,
-                UpdatedAt = now
+                UpdatedAt = now,
             };
+
+            ApplySpecs(tender, req.Specs);
 
             _db.Tenders.Add(tender);
             await _db.SaveChangesAsync();
-            await _audit.LogAsync("Tender.Created", "Tender", tender.Id, new { tender.Reference });
-            return new CreateTenderResult(CreateOutcome.Created, tender);
+
+            await _audit.LogAsync("Tender.Created", "Tender", tender.Id, new { tender.Reference, tender.Source });
+            return new CreateTenderResult(CreateOutcome.Created, ToDetail(tender));
         }
 
         public async Task<UpdateTenderResult> UpdateAsync(int id, UpdateTenderRequest req)
         {
-            var tender = await _db.Tenders.FirstOrDefaultAsync(t => t.Id == id);
-            if (tender is null) return new UpdateTenderResult(UpdateOutcome.NotFound, null);
+            if (!TenderStatus.IsValid(req.Status))
+                return new UpdateTenderResult(UpdateOutcome.InvalidStatus, null);
 
-            tender.Title = req.Title.Trim();
-            tender.Agency = req.Agency.Trim();
+            var tender = await _db.Tenders
+                .Include(t => t.Specs)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (tender is null)
+                return new UpdateTenderResult(UpdateOutcome.NotFound, null);
+
+            tender.Title = (req.Title ?? string.Empty).Trim();
+            tender.Agency = (req.Agency ?? string.Empty).Trim();
             tender.Status = req.Status;
             tender.EstValue = req.EstValue;
             tender.ClosingAt = req.ClosingAt;
             tender.Notes = req.Notes?.Trim();
             tender.UpdatedAt = DateTime.UtcNow;
 
+            // Absent specs means "not editing them"; an empty array means "clear them".
+            if (req.Specs is not null)
+            {
+                _db.TenderSpecs.RemoveRange(tender.Specs);
+                tender.Specs.Clear();
+                ApplySpecs(tender, req.Specs);
+            }
+
             await _db.SaveChangesAsync();
-            await _audit.LogAsync("Tender.Updated", "Tender", tender.Id, new { tender.Status });
-            return new UpdateTenderResult(UpdateOutcome.Updated, tender);
+
+            await _audit.LogAsync("Tender.Updated", "Tender", tender.Id, new { tender.Reference, tender.Status });
+            return new UpdateTenderResult(UpdateOutcome.Updated, ToDetail(tender));
         }
 
-        public async Task<bool> DeleteAsync(int id)
+        public async Task<DeleteOutcome> DeleteAsync(int id)
         {
             var tender = await _db.Tenders.FirstOrDefaultAsync(t => t.Id == id);
-            if (tender is null) return false;
+            if (tender is null) return DeleteOutcome.NotFound;
+
+            if (await _db.Quotations.AnyAsync(q => q.TenderId == id))
+                return DeleteOutcome.HasQuotations;
 
             _db.Tenders.Remove(tender);
             await _db.SaveChangesAsync();
+
             await _audit.LogAsync("Tender.Deleted", "Tender", id, new { tender.Reference });
-            return true;
+            return DeleteOutcome.Deleted;
         }
+
+        private static void ApplySpecs(Tender tender, IReadOnlyList<string>? specs)
+        {
+            if (specs is null) return;
+
+            var ordinal = 0;
+            foreach (var text in specs)
+            {
+                if (string.IsNullOrWhiteSpace(text)) continue;
+                tender.Specs.Add(new TenderSpec
+                {
+                    Ordinal = ordinal++,
+                    Text = text.Trim().Length > 1000 ? text.Trim()[..1000] : text.Trim(),
+                });
+            }
+        }
+
+        private static TenderDetail ToDetail(Tender t) => new(
+            t.Id, t.Reference, t.Title, t.Agency, t.Source, t.Status, t.EstValue, t.ClosingAt,
+            t.Notes, t.DetailUrl, t.CreatedAt, t.UpdatedAt,
+            t.Specs.OrderBy(s => s.Ordinal).Select(s => s.Text).ToList());
     }
 }

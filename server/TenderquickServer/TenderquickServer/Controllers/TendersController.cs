@@ -29,7 +29,7 @@ namespace TenderquickServer.Controllers
 
         // GET api/tenders/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<Tender>> GetById(int id)
+        public async Task<ActionResult<TenderDetail>> GetById(int id)
         {
             var tender = await _tenders.GetByIdAsync(id);
             return tender is null ? NotFound() : Ok(tender);
@@ -38,7 +38,7 @@ namespace TenderquickServer.Controllers
         // POST api/tenders
         [HttpPost]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Estimator}")]
-        public async Task<ActionResult<Tender>> Create([FromBody] CreateTenderRequest req)
+        public async Task<ActionResult<TenderDetail>> Create([FromBody] CreateTenderRequest req)
         {
             if (string.IsNullOrWhiteSpace(req.Reference) || string.IsNullOrWhiteSpace(req.Title))
                 return BadRequest(new { message = "Reference and title are required." });
@@ -55,7 +55,7 @@ namespace TenderquickServer.Controllers
         // PUT api/tenders/{id}
         [HttpPut("{id}")]
         [Authorize(Roles = $"{Roles.Admin},{Roles.Estimator}")]
-        public async Task<ActionResult<Tender>> Update(int id, [FromBody] UpdateTenderRequest req)
+        public async Task<ActionResult<TenderDetail>> Update(int id, [FromBody] UpdateTenderRequest req)
         {
             var result = await _tenders.UpdateAsync(id, req);
             return result.Outcome switch
@@ -72,7 +72,17 @@ namespace TenderquickServer.Controllers
         [Authorize(Roles = Roles.Admin)]
         public async Task<IActionResult> Delete(int id)
         {
-            return await _tenders.DeleteAsync(id) ? NoContent() : NotFound();
+            var outcome = await _tenders.DeleteAsync(id);
+            return outcome switch
+            {
+                DeleteOutcome.Deleted => NoContent(),
+                DeleteOutcome.NotFound => NotFound(),
+                DeleteOutcome.HasQuotations => Conflict(new
+                {
+                    message = "This tender has quotations attached. Delete or reassign them first.",
+                }),
+                _ => BadRequest(),
+            };
         }
     }
 }

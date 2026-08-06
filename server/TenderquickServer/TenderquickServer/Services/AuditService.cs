@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using TenderquickServer.Data;
 using TenderquickServer.Models;
 
@@ -7,13 +8,13 @@ namespace TenderquickServer.Services
 {
     public class AuditService : IAuditService
     {
-        private readonly InMemoryStore _store;
+        private readonly IServiceScopeFactory _scopes;
         private readonly IHttpContextAccessor _http;
         private readonly ILogger<AuditService> _logger;
 
-        public AuditService(InMemoryStore store, IHttpContextAccessor http, ILogger<AuditService> logger)
+        public AuditService(IServiceScopeFactory scopes, IHttpContextAccessor http, ILogger<AuditService> logger)
         {
-            _store = store;
+            _scopes = scopes;
             _http = http;
             _logger = logger;
         }
@@ -25,40 +26,47 @@ namespace TenderquickServer.Services
             return LogAsAsync(TryGetUserId(user), userName, action, entityType, entityId, meta);
         }
 
-        public Task LogAsAsync(int? userId, string userName, string action, string entityType, int? entityId, object? meta = null)
+        public async Task LogAsAsync(int? userId, string userName, string action, string entityType, int? entityId, object? meta = null)
         {
-            // Audit must never break the primary operation — swallow and log on failure.
+            // Written through its own scope/DbContext: a failed audit insert must never poison
+            // the change tracker of the operation that triggered it.
             try
             {
-                var entry = new AuditLog
+                using var scope = _scopes.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                var json = meta is null ? null : JsonSerializer.Serialize(meta);
+                if (json is { Length: > 2000 }) json = json[..2000];
+
+                db.AuditLogs.Add(new AuditLog
                 {
-                    Id = _store.NextAuditId(),
                     UserId = userId,
-                    UserName = userName,
+                    UserName = string.IsNullOrWhiteSpace(userName) ? "System" : userName,
                     Action = action,
                     EntityType = entityType,
                     EntityId = entityId,
                     At = DateTime.UtcNow,
-                    MetaJson = meta is null ? null : JsonSerializer.Serialize(meta),
-                };
-                _store.AuditLogs[entry.Id] = entry;
+                    MetaJson = json,
+                });
+
+                await db.SaveChangesAsync();
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Audit write failed for {Action} {EntityType}", action, entityType);
             }
-
-            return Task.CompletedTask;
         }
 
-        public Task<IEnumerable<AuditLog>> GetRecentAsync(int limit = 50)
+        public async Task<IEnumerable<AuditLog>> GetRecentAsync(int limit = 50)
         {
-            // Id is the stable monotonic key; At can tie within the same millisecond.
-            var rows = _store.AuditLogs.Values
+            using var scope = _scopes.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            return await db.AuditLogs
+                .AsNoTracking()
                 .OrderByDescending(a => a.Id)
                 .Take(limit)
-                .AsEnumerable();
-            return Task.FromResult(rows);
+                .ToListAsync();
         }
 
         private static int? TryGetUserId(ClaimsPrincipal? user)

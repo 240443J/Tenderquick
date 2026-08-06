@@ -10,6 +10,7 @@ import * as tendersApi from '../api/tenders'
 import PageHeader from '../components/common/PageHeader'
 import { tokens } from '../theme'
 import { formatDateTime } from '../utils/format'
+import { asArray } from '../utils/list'
 
 const statusColor = {
   Draft: { c: tokens.statusDraft, b: tokens.statusDraftBg },
@@ -75,7 +76,7 @@ export default function DraftingPage() {
             onChange={(e) => setTenderId(e.target.value)}
             sx={{ minWidth: 360, bgcolor: '#fff', borderRadius: 1 }}
           >
-            {(tenders || []).map((t) => (
+            {asArray(tenders).map((t) => (
               <MenuItem key={t.id} value={t.id}>{t.reference} — {t.title}</MenuItem>
             ))}
           </TextField>
@@ -96,7 +97,7 @@ export default function DraftingPage() {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-          {(drafts || []).map((d) => {
+          {asArray(drafts).map((d) => {
             const sc = statusColor[d.status] || statusColor.Draft
             return (
               <Paper

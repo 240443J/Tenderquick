@@ -15,6 +15,7 @@ import AiProgress from '../components/ai/AiProgress'
 import { tokens } from '../theme'
 import { formatDate } from '../utils/format'
 import { deadlineTone } from '../utils/deadline'
+import { asArray } from '../utils/list'
 
 const SCAN_STEPS = [
   'Connecting to GeBiz…',
@@ -90,7 +91,7 @@ export default function ScraperPage() {
 
         <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', mb: 2 }}>
           <Typography variant="body2" sx={{ color: tokens.textSecondary, mr: 1 }}>Sources:</Typography>
-          {(sources || []).map((s) => (
+          {asArray(sources).map((s) => (
             <Tooltip key={s.id} title={s.status === 'connected' ? s.note : `${s.note} — coming soon`}>
               <span>
                 <ToggleButton

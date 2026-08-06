@@ -14,6 +14,7 @@ import * as draftsApi from '../api/drafts'
 import AiProgress from '../components/ai/AiProgress'
 import { streamText } from '../utils/stream'
 import { tokens } from '../theme'
+import { asArray } from '../utils/list'
 
 const GEN_STEPS = [
   'Reading tender specification…',
@@ -201,7 +202,7 @@ export default function DraftWorkspacePage() {
             Learned from {memory?.samplesLearned ?? '—'} past submissions · improves every time you edit
           </Typography>
 
-          {(memory?.preferences || []).map((p) => (
+          {asArray(memory?.preferences).map((p) => (
             <Box key={p.id} sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 0.5 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.3 }}>{p.text}</Typography>

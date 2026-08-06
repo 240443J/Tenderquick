@@ -10,6 +10,21 @@ namespace TenderquickServer.Models.Tenders
         decimal? EstValue,
         DateTime? ClosingAt);
 
+    public record TenderDetail(
+        int Id,
+        string Reference,
+        string Title,
+        string Agency,
+        string Source,
+        string Status,
+        decimal? EstValue,
+        DateTime? ClosingAt,
+        string? Notes,
+        string? DetailUrl,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        IReadOnlyList<string> Specs);
+
     public record CreateTenderRequest(
         string Reference,
         string Title,
@@ -17,7 +32,8 @@ namespace TenderquickServer.Models.Tenders
         string? Source,
         decimal? EstValue,
         DateTime? ClosingAt,
-        string? Notes);
+        string? Notes,
+        IReadOnlyList<string>? Specs = null);
 
     public record UpdateTenderRequest(
         string Title,
@@ -25,7 +41,8 @@ namespace TenderquickServer.Models.Tenders
         string Status,
         decimal? EstValue,
         DateTime? ClosingAt,
-        string? Notes);
+        string? Notes,
+        IReadOnlyList<string>? Specs = null);
 
     public static class TenderStatus
     {

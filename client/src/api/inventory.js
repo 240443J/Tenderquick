@@ -1,39 +1,19 @@
-// PROTOTYPE: backed by the in-memory mock DB.
-import { db, nextId } from '../mock/db'
-import { respond } from '../mock/respond'
+import axios from './axios'
+
+const BASE = '/api/inventory'
 
 // Equipment
-export const getEquipment = () => respond([...db.equipment])
-export const createEquipment = (data) => {
-  const item = { id: nextId(), updatedAt: new Date().toISOString(), ...data }
-  db.equipment.unshift(item)
-  return respond(item)
-}
-export const updateEquipment = (id, data) => {
-  const item = db.equipment.find((e) => String(e.id) === String(id))
-  Object.assign(item, data, { updatedAt: new Date().toISOString() })
-  return respond(item)
-}
-export const removeEquipment = (id) => {
-  const i = db.equipment.findIndex((e) => String(e.id) === String(id))
-  if (i >= 0) db.equipment.splice(i, 1)
-  return respond({ ok: true })
-}
+export const getEquipment    = (params)   => axios.get(`${BASE}/equipment`, { params })
+export const createEquipment = (data)     => axios.post(`${BASE}/equipment`, data)
+export const updateEquipment = (id, data) => axios.put(`${BASE}/equipment/${id}`, data)
+export const removeEquipment = (id)       => axios.delete(`${BASE}/equipment/${id}`)
+export const getPriceHistory = (id)       => axios.get(`${BASE}/equipment/${id}/price-history`)
+export const getCurrentPrice = (id)       => axios.get(`${BASE}/equipment/${id}/current-price`)
+export const addPrice        = (id, data) => axios.post(`${BASE}/equipment/${id}/prices`, data)
 
 // Labour rates
-export const getLabour = () => respond([...db.labour])
-export const createLabour = (data) => {
-  const item = { id: nextId(), ...data }
-  db.labour.unshift(item)
-  return respond(item)
-}
-export const updateLabour = (id, data) => {
-  const item = db.labour.find((l) => String(l.id) === String(id))
-  Object.assign(item, data)
-  return respond(item)
-}
-export const removeLabour = (id) => {
-  const i = db.labour.findIndex((l) => String(l.id) === String(id))
-  if (i >= 0) db.labour.splice(i, 1)
-  return respond({ ok: true })
-}
+export const getLabour        = ()         => axios.get(`${BASE}/labour`)
+export const createLabour     = (data)     => axios.post(`${BASE}/labour`, data)
+export const updateLabour     = (id, data) => axios.put(`${BASE}/labour/${id}`, data)
+export const removeLabour     = (id)       => axios.delete(`${BASE}/labour/${id}`)
+export const getLabourHistory = (id)       => axios.get(`${BASE}/labour/${id}/history`)

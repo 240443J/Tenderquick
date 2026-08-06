@@ -46,13 +46,22 @@ builder.Services.AddAuthentication(options =>
 });
 builder.Services.AddAuthorization();
 
-// ─── Application services (interface-first; EF swap is one line each later) ──
+// ─── Application services ───────────────────────────────────
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddSingleton<InMemoryStore>();
+builder.Services.AddScoped<CurrentUser>();
 builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<ITenderService, InMemoryTenderService>();   // ← swap target for EF later
+builder.Services.AddScoped<ITenderService, EfTenderService>();
 builder.Services.AddScoped<ITenderSearchService, TenderSearchService>();
+builder.Services.AddScoped<ICalendarService, LocalCalendarService>();
+builder.Services.AddScoped<IDeadlineService, EfDeadlineService>();
+builder.Services.AddScoped<IInventoryService, EfInventoryService>();
+builder.Services.AddScoped<IQuotationService, EfQuotationService>();
+builder.Services.AddScoped<IDocumentService, EfDocumentService>();
+builder.Services.AddScoped<IDiscoveryService, EfDiscoveryService>();
+
+// The only line that names an AI vendor. Swapping providers happens here.
+builder.Services.AddScoped<IAiProvider, RuleBasedAiProvider>();
 
 // External tender sources — registered as IEnumerable<ITenderSource> for fan-out search.
 builder.Services.AddHttpClient<ITenderSource, GebizSource>();
@@ -86,6 +95,23 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+// ─── Migrate + seed ─────────────────────────────────────────
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await DbInitializer.SeedAsync(db);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex,
+            "Database migration/seed failed. Check ConnectionStrings:MyConnection and that MySQL is running.");
+        throw;
+    }
+}
 
 if (app.Environment.IsDevelopment())
 {

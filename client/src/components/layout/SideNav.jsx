@@ -1,12 +1,15 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Box, Chip,
+  Drawer, List, ListItemButton, ListItemIcon, ListItemText, Toolbar, Box,
 } from '@mui/material'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import DescriptionIcon from '@mui/icons-material/Description'
 import SearchIcon from '@mui/icons-material/Search'
 import Inventory2Icon from '@mui/icons-material/Inventory2'
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote'
+import EventIcon from '@mui/icons-material/Event'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
+import TravelExploreIcon from '@mui/icons-material/TravelExplore'
 import { useAuth } from '../../context/AuthContext'
 
 const WIDTH = 240
@@ -17,11 +20,11 @@ const NAV = [
   { label: 'Dashboard', icon: <DashboardIcon />, to: '/' },
   { label: 'Tenders', icon: <DescriptionIcon />, to: '/tenders' },
   { label: 'Tender Search', icon: <SearchIcon />, to: '/search', allow: EDITORS },
-]
-
-const COMING_SOON = [
-  { label: 'Inventory', icon: <Inventory2Icon /> },
-  { label: 'Quotations', icon: <RequestQuoteIcon /> },
+  { label: 'Discover', icon: <TravelExploreIcon />, to: '/scraper', allow: EDITORS },
+  { label: 'Deadlines', icon: <EventIcon />, to: '/deadlines' },
+  { label: 'Inventory', icon: <Inventory2Icon />, to: '/inventory' },
+  { label: 'Quotations', icon: <RequestQuoteIcon />, to: '/quotations' },
+  { label: 'AI Drafting', icon: <AutoAwesomeIcon />, to: '/drafting', allow: EDITORS },
 ]
 
 export default function SideNav() {
@@ -53,13 +56,6 @@ export default function SideNav() {
             >
               <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} />
-            </ListItemButton>
-          ))}
-          {COMING_SOON.map((item) => (
-            <ListItemButton key={item.label} disabled sx={{ mx: 1, borderRadius: 2, mb: 0.5 }}>
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
-              <Chip size="small" label="soon" sx={{ height: 18, fontSize: 10 }} />
             </ListItemButton>
           ))}
         </List>

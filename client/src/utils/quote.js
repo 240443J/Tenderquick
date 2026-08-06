@@ -1,4 +1,4 @@
-import { COMPANY } from '../mock/db'
+import { COMPANY } from '../config/company'
 import { formatCurrency, formatDate } from './format'
 
 export function computeTotals(quote) {

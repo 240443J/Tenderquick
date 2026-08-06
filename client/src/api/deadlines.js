@@ -1,34 +1,14 @@
-// PROTOTYPE: backed by the in-memory mock DB.
-import { db, logAudit } from '../mock/db'
-import { respond } from '../mock/respond'
+import axios from './axios'
 
-export const getAll = () => {
-  const rows = [...db.deadlines].sort((a, b) => new Date(a.dueAt) - new Date(b.dueAt))
-  return respond(rows)
-}
+const BASE = '/api/deadlines'
 
-export const getCalendar = () => respond(db.calendar)
+export const getAll  = (params)   => axios.get(BASE, { params })
+export const create  = (data)     => axios.post(BASE, data)
+export const update  = (id, data) => axios.put(`${BASE}/${id}`, data)
+export const remove  = (id)       => axios.delete(`${BASE}/${id}`)
 
-export const connectCalendar = () => {
-  db.calendar = { connected: true, account: db.user.email }
-  logAudit('Connected Google Calendar', db.user.email)
-  return respond(db.calendar, 800)
-}
-
-export const disconnectCalendar = () => {
-  db.calendar = { connected: false, account: null }
-  return respond(db.calendar)
-}
-
-export const addToCalendar = (id) => {
-  const d = db.deadlines.find((x) => String(x.id) === String(id))
-  d.addedToCalendar = true
-  logAudit('Deadline added to Google Calendar', d.title)
-  return respond(d, 600)
-}
-
-export const syncAllToCalendar = () => {
-  db.deadlines.forEach((d) => { d.addedToCalendar = true })
-  logAudit('Synced all deadlines to Google Calendar', `${db.deadlines.length} events`)
-  return respond([...db.deadlines], 900)
-}
+export const getCalendar        = () => axios.get(`${BASE}/calendar`)
+export const connectCalendar    = () => axios.post(`${BASE}/calendar/connect`)
+export const disconnectCalendar = () => axios.post(`${BASE}/calendar/disconnect`)
+export const addToCalendar      = (id) => axios.post(`${BASE}/${id}/calendar`)
+export const syncAllToCalendar  = () => axios.post(`${BASE}/calendar/sync-all`)

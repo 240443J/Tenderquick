@@ -10,6 +10,7 @@ import * as inventoryApi from '../api/inventory'
 import PageHeader from '../components/common/PageHeader'
 import { tokens, monoSx } from '../theme'
 import { formatDate } from '../utils/format'
+import { asArray } from '../utils/list'
 
 const CATEGORIES = ['Lighting', 'Switchgear', 'Security', 'Cabling', 'ACMV', 'Fire Safety']
 const UNITS = ['each', 'meter', 'box', 'lot']
@@ -52,7 +53,7 @@ function EquipmentTab() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((e) => (
+            {asArray(data).map((e) => (
               <TableRow key={e.id} hover>
                 <TableCell sx={{ minWidth: 220 }}>
                   <TextField
@@ -130,7 +131,7 @@ function LabourTab() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data.map((l) => (
+            {asArray(data).map((l) => (
               <TableRow key={l.id} hover>
                 <TableCell sx={{ minWidth: 240 }}>
                   <TextField

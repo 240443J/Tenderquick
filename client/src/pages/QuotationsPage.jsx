@@ -15,6 +15,7 @@ import DataTable from '../components/common/DataTable'
 import { tokens, monoSx } from '../theme'
 import { formatCurrency, formatDate } from '../utils/format'
 import { computeTotals } from '../utils/quote'
+import { asArray } from '../utils/list'
 
 const GEN_STEPS = [
   'Reading tender specification…',
@@ -95,7 +96,7 @@ export default function QuotationsPage() {
               onChange={(e) => setTenderId(e.target.value)}
               sx={{ minWidth: 360, bgcolor: '#fff', borderRadius: 1 }}
             >
-              {(tenders || []).map((t) => (
+              {asArray(tenders).map((t) => (
                 <MenuItem key={t.id} value={t.id}>{t.reference} — {t.title}</MenuItem>
               ))}
             </TextField>
@@ -118,7 +119,7 @@ export default function QuotationsPage() {
       ) : (
         <DataTable
           columns={columns}
-          rows={quotes || []}
+          rows={asArray(quotes)}
           getRowKey={(r) => r.id}
           onRowClick={(r) => navigate(`/quotations/${r.id}`)}
         />

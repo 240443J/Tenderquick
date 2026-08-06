@@ -2,6 +2,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
 } from '@mui/material'
 import { tokens } from '../../theme'
+import { asArray } from '../../utils/list'
 
 // Standardised table wrapper.
 // columns: [{ key, label, align?, render?(row) }]
@@ -23,7 +24,7 @@ export default function DataTable({ columns, rows, getRowKey, onRowClick }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row) => (
+          {asArray(rows).map((row) => (
             <TableRow
               key={getRowKey(row)}
               hover

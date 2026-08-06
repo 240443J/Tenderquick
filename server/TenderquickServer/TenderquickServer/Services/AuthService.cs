@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using TenderquickServer.Data;
 using TenderquickServer.Models;
@@ -10,23 +11,23 @@ namespace TenderquickServer.Services
 {
     public class AuthService : IAuthService
     {
-        private readonly InMemoryStore _store;
+        private readonly AppDbContext _db;
         private readonly IConfiguration _config;
         private readonly IAuditService _audit;
 
-        public AuthService(InMemoryStore store, IConfiguration config, IAuditService audit)
+        public AuthService(AppDbContext db, IConfiguration config, IAuditService audit)
         {
-            _store = store;
+            _db = db;
             _config = config;
             _audit = audit;
         }
 
         public async Task<AuthResponse?> LoginAsync(LoginRequest req)
         {
-            var user = _store.Users.Values.FirstOrDefault(u =>
-                string.Equals(u.Email, req.Email, StringComparison.OrdinalIgnoreCase));
+            var email = (req.Email ?? string.Empty).Trim().ToLowerInvariant();
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-            if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
+            if (user is null || !BCrypt.Net.BCrypt.Verify(req.Password ?? string.Empty, user.PasswordHash))
                 return null;
 
             // Claims aren't populated during login itself, so pass the actor explicitly.
@@ -39,31 +40,38 @@ namespace TenderquickServer.Services
             if (!Roles.IsValid(req.Role))
                 return new CreateUserResult(CreateUserOutcome.InvalidRole, null);
 
-            var exists = _store.Users.Values.Any(u =>
-                string.Equals(u.Email, req.Email, StringComparison.OrdinalIgnoreCase));
-            if (exists)
+            var email = (req.Email ?? string.Empty).Trim().ToLowerInvariant();
+            if (await _db.Users.AnyAsync(u => u.Email == email))
                 return new CreateUserResult(CreateUserOutcome.DuplicateEmail, null);
 
             var user = new User
             {
-                Id = _store.NextUserId(),
-                Name = req.Name,
-                Email = req.Email,
+                Name = (req.Name ?? string.Empty).Trim(),
+                Email = email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.Password),
                 Role = req.Role,
                 CreatedAt = DateTime.UtcNow,
             };
-            _store.Users[user.Id] = user;
+
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
 
             await _audit.LogAsync("User.Created", "User", user.Id, new { user.Email, user.Role });
             return new CreateUserResult(CreateUserOutcome.Created, ToDto(user));
         }
 
-        public Task<IEnumerable<UserDto>> GetUsersAsync() =>
-            Task.FromResult(_store.Users.Values.OrderBy(u => u.Id).Select(ToDto));
+        public async Task<IEnumerable<UserDto>> GetUsersAsync() =>
+            await _db.Users
+                .AsNoTracking()
+                .OrderBy(u => u.Id)
+                .Select(u => new UserDto(u.Id, u.Name, u.Email, u.Role))
+                .ToListAsync();
 
-        public UserDto? GetById(int id) =>
-            _store.Users.TryGetValue(id, out var user) ? ToDto(user) : null;
+        public UserDto? GetById(int id)
+        {
+            var user = _db.Users.AsNoTracking().FirstOrDefault(u => u.Id == id);
+            return user is null ? null : ToDto(user);
+        }
 
         private string GenerateToken(User user)
         {
